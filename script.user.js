@@ -1,46 +1,55 @@
 // ==UserScript==
 // @name         Z-library for NeoDB
 // @namespace    http://tampermonkey.net/
-// @version      0.1.3
-// @description  add a shortcut link on NeoDB books for search book in Z-library.
+// @version      0.25.6
+// @description  Add a shortcut link to search in Z-library on NeoDB book pages.
 // @author       shinechn
 // @homepageURL  https://github.com/shinechn
 // @supportURL   https://github.com/shinechn/zlibrary-for-neodb-script
 // @match        https://neodb.social/book/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=neodb.social
-// @grant        none
-// @license MIT
-// @downloadURL https://update.greasyfork.org/scripts/501436/Z-library%20for%20NeoDB.user.js
-// @updateURL https://update.greasyfork.org/scripts/501436/Z-library%20for%20NeoDB.meta.js
+// @grant        GM_xmlhttpRequest
+// @connect      api.to-ma-to.workers.dev
+// @license      MIT
+// @downloadURL  https://update.greasyfork.org/scripts/501436/Z-library%20for%20NeoDB.user.js
+// @updateURL    https://update.greasyfork.org/scripts/501436/Z-library%20for%20NeoDB.meta.js
 // ==/UserScript==
 
-(function () {
-  'use strict';
+let targetUrl = '';
 
-  // 等待页面完全加载
-  window.onload = function () {
+function insertZLibraryLink() {
+  const linkElement = document.querySelector("div[id='item-title'] .site-list");
+  const bookTitleElement = document.querySelector("div[id='item-title'] h1");
 
-    //  search element by CSS Selectors
-    const linkElement = document.querySelector("div[id='item-title'] .site-list");
-    const bookTitleElement = document.querySelector("div[id='item-title'] h1");
-    const targetUrl = 'https://z-library.sk'
+  if (linkElement && bookTitleElement && targetUrl) {
+    const bookTitle = bookTitleElement.textContent.trim();
+    const searchLink = document.createElement('a');
+    searchLink.href = `${targetUrl}/s/${encodeURIComponent(bookTitle)}`;
+    searchLink.textContent = 'Z-library';
+    searchLink.target = '_blank';
+    searchLink.style.cssText = `
+      margin-left: 10px;
+      padding: 2px 4px;
+      color: #fff;
+      background-color: #72ADCE;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 0.85em;
+    `;
+    linkElement.appendChild(searchLink);
+  }
+}
 
-    if (bookTitleElement) {
-      // 获取书名文本
-      const bookTitle = bookTitleElement.textContent.trim();
+// Fetch config
+GM_xmlhttpRequest({
+  method: 'GET',
+  url: 'https://api.to-ma-to.workers.dev/',
+  responseType: 'json',
+  onload: function (response) {
+    const config = response.response;
+    targetUrl = config.zlib;
 
-      // 创建一个新的链接元素
-      var searchLink = document.createElement('a');
-      searchLink.href = targetUrl + '/s/' + encodeURIComponent(bookTitle);
-      searchLink.target = '_blank';
-      searchLink.textContent = 'Z-library';
-      searchLink.style.display = 'inline';
-      searchLink.style.padding = '2px';
-      searchLink.style.color = '#fff';
-      searchLink.style.backgroundColor = '#72ADCE';
-
-      // 将链接元素添加到 "linkElement" 元素之后
-      linkElement.appendChild(searchLink);
-    }
-  };
-})();
+    // Wait for the page to load before inserting the link
+    window.addEventListener('load', insertZLibraryLink());
+  },
+});
